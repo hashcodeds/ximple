@@ -165,9 +165,7 @@ let lastSyncOutput = null;
 
 export function getProxiedSync(input) {
     if (!scramjet) return null;
-    
     if (lastSyncInput === input) return lastSyncOutput;
-    
     const result = scramjet.encodeUrl(makeURL(input));
     lastSyncInput = input;
     lastSyncOutput = result;
@@ -179,7 +177,7 @@ export function setFrames(frames) {
 }
 
 let cachedFrames = null;
-let frameSelector = 'iframe[id^="frame-"]';
+const frameSelector = 'iframe[id^="frame-"]';
 
 function getFrames() {
     if (!cachedFrames) {
@@ -214,21 +212,17 @@ export class Tab {
 
     switch() {
         currentTab = this.tabNumber;
-        
         const frames = getFrames();
         for (let i = 0; i < frames.length; i++) {
             frames[i].classList.add("hidden");
         }
-        
         this.frame.classList.remove("hidden");
         currentFrame = document.getElementById(`frame-${this.tabNumber}`);
-        
         const frameUrl = currentFrame?.contentWindow?.location.href;
         if (frameUrl) {
             const lastSlash = frameUrl.lastIndexOf('/');
             addressInput.value = decodeURIComponent(frameUrl.substring(lastSlash + 1));
         }
-        
         document.dispatchEvent(new CustomEvent("switch-tab", { detail: { tabNumber: this.tabNumber } }));
     }
 
@@ -241,25 +235,19 @@ export class Tab {
     handleLoad() {
         const frameUrl = this.frame?.contentWindow?.location.href;
         if (!frameUrl) return;
-        
         const lastSlash = frameUrl.lastIndexOf('/');
         let url = decodeURIComponent(frameUrl.substring(lastSlash + 1));
         let title = this.frame?.contentWindow?.document?.title || "";
-        
         if (title) {
             try {
                 let history = localStorage.getItem("history");
                 let historyArray = history ? JSON.parse(history) : [];
                 historyArray.push({ url, title });
-                
                 if (historyArray.length > 100) historyArray = historyArray.slice(-100);
-                
                 localStorage.setItem("history", JSON.stringify(historyArray));
             } catch (err) {}
         }
-        
         document.dispatchEvent(new CustomEvent("url-changed", { detail: { tabId: currentTab, title, url } }));
-        
         if (url === "newtab") url = "bromine://newtab";
         addressInput.value = url;
     }
@@ -272,20 +260,16 @@ export async function newTab() {
 export function switchTab(tabNumber) {
     const frames = getFrames();
     const targetId = `frame-${tabNumber}`;
-    
     for (let i = 0; i < frames.length; i++) {
         frames[i].classList.toggle("hidden", frames[i].id !== targetId);
     }
-    
     currentTab = tabNumber;
     currentFrame = document.getElementById(targetId);
-    
     const frameUrl = currentFrame?.contentWindow?.location.href;
     if (frameUrl) {
         const lastSlash = frameUrl.lastIndexOf('/');
         addressInput.value = decodeURIComponent(frameUrl.substring(lastSlash + 1));
     }
-    
     document.dispatchEvent(new CustomEvent("switch-tab", { detail: { tabNumber } }));
 }
 
@@ -293,7 +277,6 @@ export function closeTab(tabNumber) {
     const frame = document.getElementById(`frame-${tabNumber}`);
     if (frame) frame.remove();
     invalidateFrameCache();
-    
     if (currentTab === tabNumber) {
         const others = getFrames();
         if (others.length > 0) {
@@ -303,6 +286,5 @@ export function closeTab(tabNumber) {
             newTab();
         }
     }
-    
     document.dispatchEvent(new CustomEvent("close-tab", { detail: { tabNumber } }));
 }
