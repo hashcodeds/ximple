@@ -75,9 +75,6 @@ async function registerSW() {
         });
 }
 
-// Kick off SW registration and scramjet load in the background so importing
-// this module never hangs (e.g. on a hard refresh when the SW controller
-// isn't immediately available).
 export const ready = (async () => {
         try { await registerSW(); } catch (_) {}
         try { await loadScramjet(); } catch (_) {}
@@ -119,9 +116,6 @@ export async function getProxied(input) {
         return scramjet.encodeUrl(makeURL(input));
 }
 
-// Synchronous fast-path: returns the proxied URL immediately when scramjet
-// is already loaded (the common case after the first navigation), avoiding
-// an extra microtask hop in the hot navigation path.
 export function getProxiedSync(input) {
         if (!scramjet) return null;
         return scramjet.encodeUrl(makeURL(input));
