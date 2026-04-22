@@ -96,7 +96,7 @@ export function getWisp() {
         return wispURL;
 }
 
-export function makeURL(input, template = "https://search.brave.com/search?q=%s") {
+export function makeURL(input, template = "https://duckduckgo.com/?q=%s") {
         try {
                 return new URL(input).toString();
         } catch (err) {}
