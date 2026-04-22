@@ -1,0 +1,72 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ximple</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box }
+    body { font-family: monospace; background: #111; height: 100vh; display: flex; flex-direction: column }
+    #bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #111; border-bottom: 1px solid #1e1e1e }
+    button { background: none; border: none; color: #555; font-family: monospace; font-size: 13px; cursor: pointer; padding: 2px 6px }
+    button:hover:not(:disabled) { color: #ccc }
+    button:disabled { opacity: 0.25; cursor: default }
+    #url { flex: 1; background: #1a1a1a; border: none; border-radius: 4px; color: #ddd; font-family: monospace; font-size: 13px; padding: 5px 10px; outline: none }
+    #url::placeholder { color: #3a3a3a }
+    iframe { flex: 1; border: none }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <button id="back" disabled>&lt;</button>
+    <button id="fwd" disabled>&gt;</button>
+    <input id="url" type="text" placeholder="search or url" autocomplete="off" spellcheck="false"/>
+    <button id="ref">↻</button>
+  </div>
+  <iframe id="view" allow="fullscreen;microphone;camera;autoplay"></iframe>
+
+  <script type="module">
+    import { setTransport, setWisp, getProxied } from "/ximplesc/ximple.mjs";
+
+    const DDG = "https://duckduckgo.com/?q=%s";
+
+    function resolve(input) {
+      if (/^https?:\/\//i.test(input)) return input;
+      if (!input.includes(' ') && /\.[a-z]{2,}(\/|$)/i.test(input)) return 'https://' + input;
+      return DDG.replace('%s', encodeURIComponent(input));
+    }
+
+    await Promise.all([
+      setWisp(localStorage.getItem('wispServer') || "wss://wisp.waved.site/"),
+      setTransport(localStorage.getItem('transport') || "libcurl")
+    ]);
+
+    await new Promise(r => setTimeout(r, 200));
+
+    const view = document.getElementById('view');
+    const urlInput = document.getElementById('url');
+    const back = document.getElementById('back');
+    const fwd = document.getElementById('fwd');
+    let hist = [], idx = -1;
+
+    function updateNav() {
+      back.disabled = idx <= 0;
+      fwd.disabled = idx >= hist.length - 1;
+    }
+
+    async function go(input, push = true) {
+      const resolved = resolve(input);
+      if (push) { hist = hist.slice(0, idx + 1); hist.push(resolved); idx = hist.length - 1; }
+      urlInput.value = resolved;
+      view.src = await getProxied(resolved);
+      updateNav();
+    }
+
+    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') go(urlInput.value.trim()); });
+    back.addEventListener('click', () => { if (idx > 0) go(hist[--idx], false); });
+    fwd.addEventListener('click', () => { if (idx < hist.length - 1) go(hist[++idx], false); });
+    document.getElementById('ref').addEventListener('click', () => { view.src = view.src; });
+
+    go("https://duckduckgo.com/");
+  </script>
+</body>
+</html>
