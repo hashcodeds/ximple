@@ -11,25 +11,30 @@ export let framesElement;
 export let currentFrame;
 export const addressInput = document.getElementById("address");
 
-await import(`/ximplesc/scram/scramjet.all.js`);
+let scramjet = null;
 
-const { ScramjetController } = window.$scramjetLoadController();
-
-const scramjet = new ScramjetController({
-        files: {
-                wasm: `/ximplesc/scram/scramjet.wasm.wasm`,
-                all: `/ximplesc/scram/scramjet.all.js`,
-                sync: `/ximplesc/scram/scramjet.sync.js`,
-        },
-        siteFlags: {
-                "https://www.google.com/(search|sorry).*": {
-                        naiiveRewriter: true,
+async function loadScramjet() {
+        if (scramjet) return scramjet;
+        if (!window.$scramjetLoadController) {
+                await import(`/ximplesc/scram/scramjet.all.js`);
+        }
+        const { ScramjetController } = window.$scramjetLoadController();
+        scramjet = new ScramjetController({
+                files: {
+                        wasm: `/ximplesc/scram/scramjet.wasm.wasm`,
+                        all: `/ximplesc/scram/scramjet.all.js`,
+                        sync: `/ximplesc/scram/scramjet.sync.js`,
                 },
-        },
-});
-
-scramjet.init();
-window.scramjet = scramjet;
+                siteFlags: {
+                        "https://www.google.com/(search|sorry).*": {
+                                naiiveRewriter: true,
+                        },
+                },
+        });
+        scramjet.init();
+        window.scramjet = scramjet;
+        return scramjet;
+}
 
 const transportOptions = {
         epoxy: "https://unpkg.com/@mercuryworkshop/epoxy-transport@2.1.27/dist/index.mjs",
@@ -70,7 +75,13 @@ async function registerSW() {
         });
 }
 
-await registerSW();
+// Kick off SW registration and scramjet load in the background so importing
+// this module never hangs (e.g. on a hard refresh when the SW controller
+// isn't immediately available).
+export const ready = (async () => {
+        try { await registerSW(); } catch (_) {}
+        try { await loadScramjet(); } catch (_) {}
+})();
 
 async function updateBareMux() {
         if (transportURL != null && wispURL != null) {
@@ -96,7 +107,7 @@ export function getWisp() {
         return wispURL;
 }
 
-export function makeURL(input, template = "https://duckduckgo.com/?q=%s") {
+export function makeURL(input, template = "https://search.brave.com/search?q=%s") {
         try {
                 return new URL(input).toString();
         } catch (err) {}
@@ -104,6 +115,15 @@ export function makeURL(input, template = "https://duckduckgo.com/?q=%s") {
 }
 
 export async function getProxied(input) {
+        if (!scramjet) await loadScramjet();
+        return scramjet.encodeUrl(makeURL(input));
+}
+
+// Synchronous fast-path: returns the proxied URL immediately when scramjet
+// is already loaded (the common case after the first navigation), avoiding
+// an extra microtask hop in the hot navigation path.
+export function getProxiedSync(input) {
+        if (!scramjet) return null;
         return scramjet.encodeUrl(makeURL(input));
 }
 
