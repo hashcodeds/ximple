@@ -105,7 +105,6 @@ async function registerSW() {
     await swRegistrationPromise;
 }
 
-// Kick off SW registration and scramjet load in the background
 export const ready = Promise.allSettled([
     registerSW().catch(() => {}),
     loadScramjet().catch(() => {})
@@ -140,18 +139,15 @@ export function getWisp() {
     return wispURL;
 }
 
-// Pre-compile regex for URL validation
 const urlRegex = /^https?:\/\//i;
 
 export function makeURL(input, template = "https://search.brave.com/search?q=%s") {
-    // Fast path: if it already looks like a URL
     if (urlRegex.test(input)) {
         try {
             return new URL(input).toString();
         } catch (err) {}
     }
     
-    // Try as absolute URL
     try {
         return new URL(input).toString();
     } catch (err) {}
@@ -164,14 +160,12 @@ export async function getProxied(input) {
     return scramjet.encodeUrl(makeURL(input));
 }
 
-// Synchronous fast-path with caching
 let lastSyncInput = null;
 let lastSyncOutput = null;
 
 export function getProxiedSync(input) {
     if (!scramjet) return null;
     
-    // Simple cache for repeated calls with same input
     if (lastSyncInput === input) return lastSyncOutput;
     
     const result = scramjet.encodeUrl(makeURL(input));
@@ -184,7 +178,6 @@ export function setFrames(frames) {
     framesElement = frames;
 }
 
-// Cache DOM queries
 let cachedFrames = null;
 let frameSelector = 'iframe[id^="frame-"]';
 
@@ -222,7 +215,6 @@ export class Tab {
     switch() {
         currentTab = this.tabNumber;
         
-        // Use cached frames for better performance
         const frames = getFrames();
         for (let i = 0; i < frames.length; i++) {
             frames[i].classList.add("hidden");
@@ -231,7 +223,6 @@ export class Tab {
         this.frame.classList.remove("hidden");
         currentFrame = document.getElementById(`frame-${this.tabNumber}`);
         
-        // Optimize URL extraction
         const frameUrl = currentFrame?.contentWindow?.location.href;
         if (frameUrl) {
             const lastSlash = frameUrl.lastIndexOf('/');
@@ -255,14 +246,12 @@ export class Tab {
         let url = decodeURIComponent(frameUrl.substring(lastSlash + 1));
         let title = this.frame?.contentWindow?.document?.title || "";
         
-        // Batch localStorage operations
         if (title) {
             try {
                 let history = localStorage.getItem("history");
                 let historyArray = history ? JSON.parse(history) : [];
                 historyArray.push({ url, title });
                 
-                // Keep history size manageable
                 if (historyArray.length > 100) historyArray = historyArray.slice(-100);
                 
                 localStorage.setItem("history", JSON.stringify(historyArray));
